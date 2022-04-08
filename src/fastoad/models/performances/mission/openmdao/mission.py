@@ -131,9 +131,9 @@ class Mission(om.Group):
             file_name = self.options["mission_file_path"][i + 2 :] + ".yml"
             with path(resources, file_name) as mission_input_file:
                 self.options["mission_file_path"] = MissionDefinition(mission_input_file)
-        mission_wrapper = MissionWrapper(self.options["mission_file_path"])
+        self._mission_wrapper = MissionWrapper(self.options["mission_file_path"])
         if self.options["mission_name"] is None:
-            self.options["mission_name"] = mission_wrapper.get_unique_mission_name()
+            self.options["mission_name"] = self._mission_wrapper.get_unique_mission_name()
 
         mission_name = self.options["mission_name"]
 
@@ -161,7 +161,7 @@ class Mission(om.Group):
         del mission_options["compute_TOW"]
         del mission_options["add_solver"]
         del mission_options["mission_file_path"]
-        mission_options["mission_wrapper"] = mission_wrapper
+        mission_options["mission_wrapper"] = self._mission_wrapper
         mission_options["mission_name"] = mission_name
         self.add_subsystem(
             "mission_computation", MissionComponent(**mission_options), promotes=["*"]
@@ -215,25 +215,32 @@ class Mission(om.Group):
         )
         return tow_computation
 
-    @staticmethod
-    def _get_block_fuel_component(mission_name: str) -> om.AddSubtractComp:
+    def _get_block_fuel_component(self, mission_name: str) -> om.AddSubtractComp:
         """
 
         :param mission_name:
         :return: component that computes initial block fuel from TOW and ZFW
         """
         block_fuel_computation = om.AddSubtractComp()
-        block_fuel_computation.add_equation(
-            f"data:mission:{mission_name}:block_fuel",
-            [
+        equation_kwargs = dict(
+            output_name=f"data:mission:{mission_name}:block_fuel",
+            input_names=[
                 f"data:mission:{mission_name}:TOW",
-                f"data:mission:{mission_name}:taxi_out:fuel",
                 f"data:mission:{mission_name}:ZFW",
             ],
             units="kg",
-            scaling_factors=[1, 1, -1],
+            scaling_factors=[1, -1],
             desc=f'Loaded fuel before taxi-out for mission "{mission_name}"',
         )
+
+        if self._mission_wrapper.get_mission_part_names(mission_name)[0] == "taxi_out":
+            equation_kwargs["input_names"].append(
+                f"data:mission:{mission_name}:taxi_out:fuel",
+            )
+            equation_kwargs["scaling_factors"].append(1)
+
+        block_fuel_computation.add_equation(**equation_kwargs)
+
         return block_fuel_computation
 
 

@@ -367,6 +367,17 @@ class MissionBuilder:
             "Mission name must be specified if several missions are defined in mission file."
         )
 
+    def get_mission_part_names(self, mission_name: str) -> List[str]:
+        """
+
+        :param mission_name:
+        :return: list of names of parts (phase or route) for specified mission.
+        """
+        return [
+            str(part.get(ROUTE_TAG, "")) + str(part.get(PHASE_TAG, ""))
+            for part in self._structure[mission_name][PARTS_TAG]
+        ]
+
     def _build_structure(self) -> OrderedDict:
         """
         Builds mission structures.
