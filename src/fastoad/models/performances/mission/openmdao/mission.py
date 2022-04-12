@@ -94,11 +94,24 @@ class Mission(om.Group):
         )
         self.options.declare(
             "compute_TOW",
-            default=False,
+            default=None,
             types=bool,
-            desc="If True, TakeOff Weight will be computed from mission block fuel and ZFW.\n"
-            "If False, block fuel will be computed from TOW and ZFW.\n"
-            "Not used (actually forced to True) if adjust_fuel is True.",
+            allow_none=True,
+            desc="(Deprecated. Please use 'use_block_fuel_as_input' instead)\n"
+            "If True, TakeOff Weight will be computed from mission block fuel and ZFW.\n"
+            "If False (default), block fuel will be computed from TOW and ZFW.\n"
+            "Not used (actually forced to True) if 'adjust_fuel' is True.",
+        )
+        self.options.declare(
+            "use_block_fuel_as_input",
+            default=None,
+            types=bool,
+            allow_none=True,
+            desc="If True, TakeOff and/or Ramp Weight will be computed from mission block fuel and "
+            "ZFW.\n"
+            "If False (default), block fuel will be computed from ZFW and mission mass input (TOW "
+            "or Ramp Weight).\n"
+            "Not used (actually forced to True) if 'adjust_fuel' is True.",
         )
         self.options.declare(
             "add_solver",
@@ -123,6 +136,12 @@ class Mission(om.Group):
         )
 
     def setup(self):
+        if self.options["use_block_fuel_as_input"] is None:
+            if self.options["compute_TOW"] is not None:
+                self.options["use_block_fuel_as_input"] = self.options["use_block_fuel_as_input"]
+            else:
+                self.options["use_block_fuel_as_input"] = False
+
         if "::" in self.options["mission_file_path"]:
             # The configuration file parser will have added the working directory before
             # the file name. But as the user-provided string begins with "::", we just
@@ -132,15 +151,17 @@ class Mission(om.Group):
             with path(resources, file_name) as mission_input_file:
                 self.options["mission_file_path"] = MissionDefinition(mission_input_file)
         self._mission_wrapper = MissionWrapper(self.options["mission_file_path"])
+
         if self.options["mission_name"] is None:
             self.options["mission_name"] = self._mission_wrapper.get_unique_mission_name()
-
         mission_name = self.options["mission_name"]
 
         self.add_subsystem("ZFW_computation", self._get_zfw_component(mission_name), promotes=["*"])
 
+        tow_variable = self._mission_wrapper.get_mission_start_mass_input(mission_name)
+
         if self.options["adjust_fuel"]:
-            self.options["compute_TOW"] = True
+            self.options["use_block_fuel_as_input"] = True
             self.connect(
                 f"data:mission:{mission_name}:needed_block_fuel",
                 f"data:mission:{mission_name}:block_fuel",
@@ -149,9 +170,11 @@ class Mission(om.Group):
                 self.nonlinear_solver = om.NonlinearBlockGS(maxiter=30, rtol=1.0e-4, iprint=0)
                 self.linear_solver = om.DirectSolver()
 
-        if self.options["compute_TOW"]:
+        if self.options["use_block_fuel_as_input"]:
             self.add_subsystem(
-                "TOW_computation", self._get_tow_component(mission_name), promotes=["*"]
+                "TOW_computation",
+                self._get_tow_component(mission_name, tow_variable),
+                promotes=["*"],
             )
 
         # Needed when TOW should be defined as input in the mission definition file:

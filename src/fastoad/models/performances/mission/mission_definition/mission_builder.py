@@ -254,11 +254,11 @@ class MissionBuilder:
         else:
             self._definition = mission_definition
 
-        self._structure = self._build_structure()
+        self.structure = self._build_structure()
 
-        for mission_name, mission_structure in self._structure.items():
+        for mission_name, mission_structure in self.structure.items():
             self._input_definitions[mission_name] = []
-            self._structure[mission_name] = self._parse_inputs(mission_name, mission_structure)
+            self.structure[mission_name] = self._parse_inputs(mission_name, mission_structure)
 
     @property
     def propulsion(self) -> IPropulsion:
@@ -292,7 +292,7 @@ class MissionBuilder:
                 input_def.set_variable_value(inputs)
         if mission_name is None:
             mission_name = self.get_unique_mission_name()
-        mission = self._build_mission(self._structure[mission_name])
+        mission = self._build_mission(self.structure[mission_name])
         self._propagate_name(mission, mission.name)
         return mission
 
@@ -360,12 +360,24 @@ class MissionBuilder:
         :raise FastMissionFileMissingMissionNameError: if several missions are defined in mission
                                                        file
         """
-        if len(self._structure) == 1:
-            return list(self._structure.keys())[0]
+        if len(self.structure) == 1:
+            return list(self.structure.keys())[0]
 
         raise FastMissionFileMissingMissionNameError(
             "Mission name must be specified if several missions are defined in mission file."
         )
+
+    def get_mission_start_mass_input(self, mission_name: str) -> Optional[str]:
+        """
+
+        :param mission_name:
+        :return: Target mass variable of first segment, if any.
+        """
+        part = self.structure[mission_name][PARTS_TAG][0]
+        while PARTS_TAG in part:
+            part = part[PARTS_TAG][0]
+        if "mass" in part["target"]:
+            return part["target"]["mass"].variable_name
 
     def get_mission_part_names(self, mission_name: str) -> List[str]:
         """
@@ -375,7 +387,7 @@ class MissionBuilder:
         """
         return [
             str(part.get(ROUTE_TAG, "")) + str(part.get(PHASE_TAG, ""))
-            for part in self._structure[mission_name][PARTS_TAG]
+            for part in self.structure[mission_name][PARTS_TAG]
         ]
 
     def _build_structure(self) -> OrderedDict:

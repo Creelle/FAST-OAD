@@ -60,7 +60,7 @@ def test_initialization():
         reference_area=100.0,
     )
 
-    assert repr(mission_builder._structure) == _get_expected_structure()
+    assert repr(mission_builder.structure) == _get_expected_structure()
 
 
 def test_inputs():
