@@ -238,8 +238,8 @@ def test_mission_group_breguet_without_loop(cleanup, with_dummy_plugin_2):
         ),
         ivc,
     )
-    assert_allclose(problem["data:mission:operational:needed_block_fuel"], 6346.0, atol=1.0)
-    assert_allclose(problem["data:mission:operational:block_fuel"], 15100.0, atol=1.0)
+    assert_allclose(problem["data:mission:operational:needed_block_fuel"], 6253.0, atol=1.0)
+    assert_allclose(problem["data:mission:operational:block_fuel"], 15000.0, atol=1.0)
 
 
 def test_mission_group_with_loop(cleanup, with_dummy_plugin_2):
@@ -267,8 +267,7 @@ def test_mission_group_with_loop(cleanup, with_dummy_plugin_2):
         problem["data:mission:operational:TOW"],
         problem["data:mission:operational:OWE"]
         + problem["data:mission:operational:payload"]
-        + problem["data:mission:operational:block_fuel"]
-        - problem["data:mission:operational:taxi_out:fuel"],
+        + problem["data:mission:operational:block_fuel"],
         atol=1.0,
     )
     assert_allclose(
@@ -303,8 +302,7 @@ def test_mission_group_breguet_with_loop(cleanup, with_dummy_plugin_2):
         problem["data:mission:operational:TOW"],
         problem["data:mission:operational:OWE"]
         + problem["data:mission:operational:payload"]
-        + problem["data:mission:operational:block_fuel"]
-        - problem["data:mission:operational:taxi_out:fuel"],
+        + problem["data:mission:operational:block_fuel"],
         atol=1.0,
     )
     assert_allclose(
