@@ -99,7 +99,9 @@ class MissionWrapper(MissionBuilder):
                 desc=f'Starting mass for mission "{mission_name}"',
             )
 
-    def compute(self, inputs: Vector, outputs: Vector) -> pd.DataFrame:
+    def compute_from(
+        self, start_flight_point: FlightPoint, inputs: Vector, outputs: Vector
+    ) -> pd.DataFrame:
         """
         To be used during compute() of an OpenMDAO component.
 
@@ -122,14 +124,6 @@ class MissionWrapper(MissionBuilder):
                 outputs[name_root + ":fuel"] = start.mass - end.mass
             if name_root + ":distance" in outputs:
                 outputs[name_root + ":distance"] = end.ground_distance - start.ground_distance
-
-        start_flight_point = FlightPoint(
-            altitude=inputs[f"{self._variable_prefix}:start:altitude"],
-            true_airspeed=inputs[f"{self._variable_prefix}:start:true_airspeed"],
-            mass=0.0,
-        )
-        if f"{self._variable_prefix}:start:mass" in inputs:
-            start_flight_point.mass = inputs[f"{self._variable_prefix}:start:mass"]
 
         flight_points = mission.compute_from(start_flight_point)
         flight_points.loc[0, "name"] = flight_points.loc[1, "name"]

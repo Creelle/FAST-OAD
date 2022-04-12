@@ -214,7 +214,7 @@ class Mission(om.Group):
                 f"data:mission:{mission_name}:block_fuel",
             ],
             units="kg",
-            desc=f'Loaded fuel before taxi-out for mission "{mission_name}"',
+            desc=f'TakeOff Weight for mission "{mission_name}"',
         )
         if self._mission_wrapper.get_mission_part_names(mission_name)[0] == "taxi_out":
             equation_kwargs["input_names"].append(
@@ -223,6 +223,26 @@ class Mission(om.Group):
             equation_kwargs["scaling_factors"] = [1, 1, -1]
         tow_computation.add_equation(**equation_kwargs)
         return tow_computation
+
+    @staticmethod
+    def _get_ramp_weight_component(mission_name: str) -> om.AddSubtractComp:
+        """
+
+        :param mission_name:
+        :return:
+        """
+        rw_computation = om.AddSubtractComp()
+        equation_kwargs = dict(
+            output_name=f"data:mission:{mission_name}:ramp_weight",
+            input_names=[
+                f"data:mission:{mission_name}:ZFW",
+                f"data:mission:{mission_name}:block_fuel",
+            ],
+            units="kg",
+            desc=f'weight at start of mission "{mission_name}"',
+        )
+        rw_computation.add_equation(**equation_kwargs)
+        return rw_computation
 
     def _get_block_fuel_component(self, mission_name: str) -> om.AddSubtractComp:
         """
@@ -239,7 +259,7 @@ class Mission(om.Group):
             ],
             units="kg",
             scaling_factors=[1, -1],
-            desc=f'Loaded fuel before taxi-out for mission "{mission_name}"',
+            desc=f'Loaded fuel for mission "{mission_name}"',
         )
 
         if self._mission_wrapper.get_mission_part_names(mission_name)[0] == "taxi_out":
@@ -257,6 +277,9 @@ _MissionVariables = namedtuple(
     "_MissionVariables",
     [
         "TOW",
+        "RAMP_WEIGHT",
+        "START_ALTITUDE",
+        "START_SPEED",
         "NEEDED_BLOCK_FUEL",
         "TAXI_OUT_FUEL",
     ],
@@ -311,6 +334,9 @@ class MissionComponent(om.ExplicitComponent):
 
         self._mission_vars = _MissionVariables(
             TOW=f"data:mission:{mission_name}:TOW",
+            RAMP_WEIGHT=f"data:mission:{mission_name}:ramp_weight",
+            START_ALTITUDE=f"data:mission:{mission_name}:start:altitude",
+            START_SPEED=f"data:mission:{mission_name}:start:true_airspeed",
             NEEDED_BLOCK_FUEL=f"data:mission:{mission_name}:needed_block_fuel",
             TAXI_OUT_FUEL=f"data:mission:{mission_name}:taxi_out:fuel",
         )
@@ -424,7 +450,12 @@ class MissionComponent(om.ExplicitComponent):
         self._mission_wrapper.propulsion = propulsion_model
         self._mission_wrapper.reference_area = reference_area
 
-        self.flight_points = self._mission_wrapper.compute(inputs, outputs)
+        start_flight_point = FlightPoint(
+            altitude=inputs[self._mission_vars.START_ALTITUDE],
+            true_airspeed=inputs[self._mission_vars.START_SPEED],
+            mass=inputs[self._mission_vars.RAMP_WEIGHT],
+        )
+        self.flight_points = self._mission_wrapper.compute_from(start_flight_point, inputs, outputs)
 
         # Final ================================================================
         start_of_mission = FlightPoint.create(self.flight_points.iloc[0])
