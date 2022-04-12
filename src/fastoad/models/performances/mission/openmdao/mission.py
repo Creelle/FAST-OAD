@@ -142,8 +142,8 @@ class Mission(om.Group):
         if self.options["adjust_fuel"]:
             self.options["compute_TOW"] = True
             self.connect(
-                f"data:mission:{mission_name}:needed_onboard_fuel_at_takeoff",
-                f"data:mission:{mission_name}:onboard_fuel_at_takeoff",
+                f"data:mission:{mission_name}:needed_block_fuel",
+                f"data:mission:{mission_name}:block_fuel",
             )
             if self.options["add_solver"]:
                 self.nonlinear_solver = om.NonlinearBlockGS(maxiter=30, rtol=1.0e-4, iprint=0)
@@ -153,6 +153,7 @@ class Mission(om.Group):
             self.add_subsystem(
                 "TOW_computation", self._get_tow_component(mission_name), promotes=["*"]
             )
+
         # Needed when TOW should be defined as input in the mission definition file:
         self.set_input_defaults(f"data:mission:{mission_name}:TOW", np.nan, "kg")
 
@@ -167,9 +168,12 @@ class Mission(om.Group):
             "mission_computation", MissionComponent(**mission_options), promotes=["*"]
         )
 
-        self.add_subsystem(
-            "block_fuel_computation", self._get_block_fuel_component(mission_name), promotes=["*"]
-        )
+        if not self.options["compute_TOW"]:
+            self.add_subsystem(
+                "block_fuel_computation",
+                self._get_block_fuel_component(mission_name),
+                promotes=["*"],
+            )
 
     @property
     def flight_points(self) -> pd.DataFrame:
@@ -196,23 +200,28 @@ class Mission(om.Group):
         )
         return zfw_computation
 
-    @staticmethod
-    def _get_tow_component(mission_name: str) -> om.AddSubtractComp:
+    def _get_tow_component(self, mission_name: str) -> om.AddSubtractComp:
         """
 
         :param mission_name:
         :return: component that computes TakeOff Weight from ZFW and loaded fuel at takeoff
         """
         tow_computation = om.AddSubtractComp()
-        tow_computation.add_equation(
-            f"data:mission:{mission_name}:TOW",
-            [
+        equation_kwargs = dict(
+            output_name=f"data:mission:{mission_name}:TOW",
+            input_names=[
                 f"data:mission:{mission_name}:ZFW",
-                f"data:mission:{mission_name}:onboard_fuel_at_takeoff",
+                f"data:mission:{mission_name}:block_fuel",
             ],
             units="kg",
-            desc=f'TakeOff Weight for mission "{mission_name}"',
+            desc=f'Loaded fuel before taxi-out for mission "{mission_name}"',
         )
+        if self._mission_wrapper.get_mission_part_names(mission_name)[0] == "taxi_out":
+            equation_kwargs["input_names"].append(
+                f"data:mission:{mission_name}:taxi_out:fuel",
+            )
+            equation_kwargs["scaling_factors"] = [1, 1, -1]
+        tow_computation.add_equation(**equation_kwargs)
         return tow_computation
 
     def _get_block_fuel_component(self, mission_name: str) -> om.AddSubtractComp:
@@ -249,7 +258,6 @@ _MissionVariables = namedtuple(
     [
         "TOW",
         "NEEDED_BLOCK_FUEL",
-        "NEEDED_FUEL_AT_TAKEOFF",
         "TAXI_OUT_FUEL",
     ],
 )
@@ -304,7 +312,6 @@ class MissionComponent(om.ExplicitComponent):
         self._mission_vars = _MissionVariables(
             TOW=f"data:mission:{mission_name}:TOW",
             NEEDED_BLOCK_FUEL=f"data:mission:{mission_name}:needed_block_fuel",
-            NEEDED_FUEL_AT_TAKEOFF=f"data:mission:{mission_name}:needed_onboard_fuel_at_takeoff",
             TAXI_OUT_FUEL=f"data:mission:{mission_name}:taxi_out:fuel",
         )
         try:
@@ -327,15 +334,9 @@ class MissionComponent(om.ExplicitComponent):
             units="kg",
             desc=f'Needed fuel to complete mission "{mission_name}", including reserve fuel',
         )
-        self.add_output(
-            self._mission_vars.NEEDED_FUEL_AT_TAKEOFF,
-            units="kg",
-            desc=f'fuel quantity at instant of takeoff of mission "{mission_name}"',
-        )
 
         if self.options["is_sizing"]:
             self.add_output("data:weight:aircraft:sizing_block_fuel", units="kg")
-            self.add_output("data:weight:aircraft:sizing_onboard_fuel_at_takeoff", units="kg")
 
     def setup_partials(self):
         self.declare_partials(["*"], ["*"], method="fd")
@@ -437,16 +438,9 @@ class MissionComponent(om.ExplicitComponent):
         outputs[self._mission_vars.NEEDED_BLOCK_FUEL] = (
             start_of_mission.mass - end_of_mission.mass + reserve
         )
-        outputs[self._mission_vars.NEEDED_FUEL_AT_TAKEOFF] = (
-            outputs[self._mission_vars.NEEDED_BLOCK_FUEL]
-            - outputs[self._mission_vars.TAXI_OUT_FUEL]
-        )
         if self.options["is_sizing"]:
             outputs["data:weight:aircraft:sizing_block_fuel"] = outputs[
                 self._mission_vars.NEEDED_BLOCK_FUEL
-            ]
-            outputs["data:weight:aircraft:sizing_onboard_fuel_at_takeoff"] = outputs[
-                self._mission_vars.NEEDED_FUEL_AT_TAKEOFF
             ]
 
         def as_scalar(value):
