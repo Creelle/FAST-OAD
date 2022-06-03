@@ -34,6 +34,7 @@ from fastoad.openmdao.variables import VariableList
 import fastoad.api as oad
 import os.path as pth
 import time
+from xfoil import XFoil()
 
 COLS = plotly.colors.DEFAULT_PLOTLY_COLORS
 
@@ -63,18 +64,13 @@ def wing_lift_distribution_plot(
     :return: plot of the payload-range diagram with the points calculated using breguet-leduc formula
     """
 
-    # Figure :
-    if fig is None:
-        fig = go.Figure()
 
-    fig = go.FigureWidget(fig)
-    fig.update_layout(
-        title_text=name, xaxis_title="x", yaxis_title="y"
-    )
 
-    if x_axis is not None:
-        fig.update_xaxes(range=[x_axis[0], x_axis[1]])
-    if y_axis is not None:
-        fig.update_yaxes(range=[y_axis[0], y_axis[1]])
 
-    return fig
+
+    return 0
+
+    def LLT_solver():
+        """
+        Thus function returns the local
+        """
