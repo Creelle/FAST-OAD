@@ -1,0 +1,15 @@
+title: OAD Process
+
+module_folders:
+
+input_file: ../data/problem_inputs.xml
+output_file: ../data/problem_outputs.xml
+
+model:
+  post_processing:
+    id: fastoad.postprocessing.belgian_legacy
+    propulsion_id: fastoad.wrapper.propulsion.rubber_engine
+  subgroup:
+    geometry:
+      # An OpenMDAO component is identified by its "id"
+      id: fastoad.geometry.legacy
