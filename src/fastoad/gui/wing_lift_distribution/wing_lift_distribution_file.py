@@ -17,12 +17,11 @@ Defines the analysis and plotting functions for postprocessing
 from typing import Dict
 
 import numpy as np
-import pandas as pd
 import plotly
 import plotly.graph_objects as go
 from openmdao.utils.units import convert_units
 from plotly.subplots import make_subplots
-from scipy.optimize import fsolve
+
 
 from fastoad.constants import EngineSetting
 from fastoad.io import VariableIO
@@ -30,13 +29,8 @@ from fastoad.model_base import FlightPoint
 from stdatm import Atmosphere
 from fastoad.openmdao.variables import VariableList
 
-import fastoad.api as oad
-import os.path as pth
-import time
-
 COLS = plotly.colors.DEFAULT_PLOTLY_COLORS
 pi = np.pi
-
 
 def wing_lift_distribution_plot(
     aircraft_file_path: str,
@@ -65,14 +59,11 @@ def wing_lift_distribution_plot(
     """
     variables = VariableIO(aircraft_file_path, file_formatter).read()
 
-    wing_kink_leading_edge_x = variables["data:geometry:wing:kink:leading_edge:x:local"].value[0]
     wing_tip_leading_edge_x = variables["data:geometry:wing:tip:leading_edge:x:local"].value[0]
     wing_root_y = variables["data:geometry:wing:root:y"].value[0]
     wing_kink_y = variables["data:geometry:wing:kink:y"].value[0]
     wing_tip_y = variables["data:geometry:wing:tip:y"].value[0]
-    wing_area = variables["data:geometry:wing:area"].value[0]
     wing_root_chord = variables["data:geometry:wing:root:chord"].value[0]
-    wing_kink_chord = variables["data:geometry:wing:kink:chord"].value[0]
     wing_tip_chord = variables["data:geometry:wing:tip:chord"].value[0]
 
     alpha0 = variables["data:aerodynamics:wing_lift_distribution:alpha0"].value
@@ -92,35 +83,25 @@ def wing_lift_distribution_plot(
             )
             return slope * (y - wing_kink_y) + wing_root_chord
 
-    theta = np.linspace(0, pi / 2, len(alpha0))
-    z = span / 2 * np.cos(theta)
-
     n = len(alpha0)
     theta = np.linspace(pi / 2, pi * n / (n + 1), n)
     z = -span / 2 * np.cos(theta)
     chord = np.zeros(len(theta))
-
     for i in range(n):
         chord[i] = trailing_edge_x(z[i]) - leading_edge_x(z[i])
     # chord = np.interp(z, [wing_root_y, wing_tip_y], [wing_root_chord, wing_tip_chord ])
-    print(chord)
-    print(z)
 
     # Set up the system K A  = L : A unknown
     alpha = alpha * pi / 180 * np.ones(n)
     alpha0 = np.asarray(alpha0) * pi / 180
     delta_vrillage = -4.0 * pi / 180 / n
-    alpha_vrillage = np.zeros(n)
 
+    alpha_vrillage = np.zeros(n)
     for i in range(n):
         alpha_vrillage[i] = delta_vrillage * i
-    print(alpha_vrillage * 180 / pi)
-    print((alpha + alpha_vrillage) * 180 / pi)
 
     K = np.zeros([n, n])
-    L = np.zeros(n)
-
-    for i in range(n):
+    for i in range(n):  # seuls les A impairs sont nuls
         K[:, i] = np.sin((2 * i + 1) * theta) * (
             1 + pi * chord / (4 * span) * (2 * i + 1) / np.sin(theta)
         )
@@ -130,16 +111,16 @@ def wing_lift_distribution_plot(
 
     cl_global = pi * aspect_ratio * A[0]
     gamma = np.zeros(n)
-
     for i in range(n):
         for j in range(n):
             gamma[i] += A[j] * np.sin((2 * j + 1) * theta[i])
     cl_local = 4 * span / chord * gamma
 
+    # Figure
     if fig is None:
         fig = go.Figure()
 
-    scatter = go.Scatter(x=z, y=cl_local / cl_global, mode="lines")
+    scatter = go.Scatter(x=z, y=cl_local / cl_global, mode="lines",marker_color=color,name = name)
 
     fig.add_trace(scatter)
 
@@ -153,8 +134,4 @@ def wing_lift_distribution_plot(
     if y_axis is not None:
         fig.update_yaxes(range=[y_axis[0], y_axis[1]])
 
-    # fig2 = go.Figure()
-    # scatter = go.Scatter(x=z,y=chord,mode="lines")
-    # fig2.add_trace(scatter)
-    # fig2.show()
     return fig

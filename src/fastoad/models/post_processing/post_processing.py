@@ -12,9 +12,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .speed_altitude_diagram import SpeedAltitudeDiagram
-from .ceiling_mass_diagram import CeilingMassDiagram
-from .wing_lift_distibution import WingLiftDistribution
+from .wing_lift_distibution import WingLift, Alpha0
 
 import openmdao.api as om
 import fastoad.api as oad
@@ -26,19 +24,14 @@ class PostProcessing(om.Group):
         self.options.declare("propulsion_id", default="", types=str)
 
     def setup(self):
-        self.add_subsystem(
-            "speed_altitude",
-            SpeedAltitudeDiagram(propulsion_id=self.options["propulsion_id"]),
-            promotes=["*"],
-        )
-        self.add_subsystem(
-            "ceiling_mass",
-            CeilingMassDiagram(propulsion_id=self.options["propulsion_id"]),
-            promotes=["*"],
-        )
 
         self.add_subsystem(
-            "wing_lift_distribtion",
-            WingLiftDistribution(),
+            "wing_lift_distribution",
+            WingLift(),
+            promotes=["*"],
+        )
+        self.add_subsystem(
+            "alpha0",
+            Alpha0(),
             promotes=["*"],
         )

@@ -1,8 +1,4 @@
 <FASTOAD_model>
-  <xfoil>
-      <mach is_input="True">0.71</mach>
-      <reynolds is_input="True">1000000</reynolds>
-    </xfoil>
   <data>
     <TLAR>
       <NPAX is_input="True">150.0<!--top-level requirement: number of passengers, assuming a classic eco/business class repartition--></NPAX>
