@@ -12,11 +12,12 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .wing_lift_distibution import WingLift, Alpha0
+from .wing_lift_distibution import Alpha0, Xfoil
 
 import openmdao.api as om
 import fastoad.api as oad
 
+import numpy as np
 
 @oad.RegisterOpenMDAOSystem("fastoad.postprocessing.belgian_legacy")
 class PostProcessing(om.Group):
@@ -24,12 +25,12 @@ class PostProcessing(om.Group):
         self.options.declare("propulsion_id", default="", types=str)
 
     def setup(self):
-
         self.add_subsystem(
-            "wing_lift_distribution",
-            WingLift(),
+            "xfoil_run",
+            Xfoil(),
             promotes=["*"],
         )
+
         self.add_subsystem(
             "alpha0",
             Alpha0(),

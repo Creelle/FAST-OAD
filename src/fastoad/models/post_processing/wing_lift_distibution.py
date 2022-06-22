@@ -2,8 +2,7 @@
 import os.path as pth
 import numpy as np
 import openmdao.api as om
-from fastoad.module_management.constants import ModelDomain
-from fastoad.module_management.service_registry import RegisterOpenMDAOSystem, RegisterSubmodel
+from matplotlib import pyplot as plt
 
 from fastoad_cs25.models.aerodynamics.external.xfoil.xfoil_polar import (
     XfoilPolar,
@@ -20,8 +19,9 @@ RESULT_POLAR_FILENAME = "xfoil_results.txt"
 pi = np.pi
 
 
-class WingLift(om.Group):
+class Xfoil(om.Group):
     def setup(self):
+
         self.add_subsystem(
             "xfoil_run",
             XfoilPolar(
@@ -55,4 +55,9 @@ class Alpha0(om.ExplicitComponent):
             print(line)
         f.close()
         outputs["data:aerodynamics:wing_lift_distribution:alpha0"] = -np.ones(N_THETA)
+
+
+
+
+
 

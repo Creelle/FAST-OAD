@@ -51,7 +51,8 @@ def wing_lift_distribution_plot(
     :param name: name to give to the trace added to the figure
     :param fig: existing figure to which add the plot
     :param file_formatter: the formatter that defines the format of data file. If not provided,
-                           default format will be assumed.
+                           default format will be assumed
+    :param alpha: AoA considered for the lift distribution. Default is 5°
     :param x_axis: defines the x axis if the user wants to
     :param y_axis: defines the y axis if the user wants to
     :param color : defines the color of the graph
@@ -59,7 +60,7 @@ def wing_lift_distribution_plot(
     """
     variables = VariableIO(aircraft_file_path, file_formatter).read()
 
-    wing_tip_leading_edge_x = variables["data:geometry:wing:tip:leading_edge:x:local"].value[0]
+    wing_tip_leading_edge_x_local = variables["data:geometry:wing:tip:leading_edge:x:local"].value[0]
     wing_root_y = variables["data:geometry:wing:root:y"].value[0]
     wing_kink_y = variables["data:geometry:wing:kink:y"].value[0]
     wing_tip_y = variables["data:geometry:wing:tip:y"].value[0]
@@ -70,15 +71,19 @@ def wing_lift_distribution_plot(
     span = variables["data:geometry:wing:span"].value[0]
     aspect_ratio = variables["data:geometry:wing:aspect_ratio"].value[0]
 
+    #sweep
+    sweep_25 = variables["data:geometry:wing:sweep_25"].value[0]
+
+
     def leading_edge_x(y: float):
-        slope = wing_tip_leading_edge_x / (wing_tip_y - wing_root_y)
+        slope = wing_tip_leading_edge_x_local / (wing_tip_y - wing_root_y)
         return slope * (y - wing_root_y)
 
     def trailing_edge_x(y: float):
         if y < wing_kink_y:
             return wing_root_chord
         else:
-            slope = (wing_tip_leading_edge_x + wing_tip_chord - wing_root_chord) / (
+            slope = (wing_tip_leading_edge_x_local + wing_tip_chord - wing_root_chord) / (
                 wing_tip_y - wing_kink_y
             )
             return slope * (y - wing_kink_y) + wing_root_chord
@@ -114,7 +119,7 @@ def wing_lift_distribution_plot(
     for i in range(n):
         for j in range(n):
             gamma[i] += A[j] * np.sin((2 * j + 1) * theta[i])
-    cl_local = 4 * span / chord * gamma
+    cl_local = 4 * span / chord * gamma * np.cos(sweep_25*pi/180)
 
     # Figure
     if fig is None:
@@ -126,7 +131,7 @@ def wing_lift_distribution_plot(
 
     fig = go.FigureWidget(fig)
     fig.update_layout(
-        title_text="Payload range diagram", xaxis_title="range [NM]", yaxis_title="Payload [tonnes]"
+        title_text="Wing lift distribution " + name, xaxis_title="span [m]", yaxis_title="$Cl_{2D}/CL_{3D}$"
     )
 
     if x_axis is not None:
