@@ -131,7 +131,7 @@ def wing_lift_distribution_plot(
 
     fig = go.FigureWidget(fig)
     fig.update_layout(
-        title_text="Wing lift distribution " + name, xaxis_title="span [m]", yaxis_title="$Cl_{2D}/CL_{3D}$"
+        title_text= name, xaxis_title="span [m]", yaxis_title="$Cl_{2D}/CL_{3D}$"
     )
 
     if x_axis is not None:
@@ -139,4 +139,36 @@ def wing_lift_distribution_plot(
     if y_axis is not None:
         fig.update_yaxes(range=[y_axis[0], y_axis[1]])
 
-    return fig
+    fig2 = go.Figure()
+    f=open("data/boeing_airfoil.dat","r")
+    lines = f.readlines()[1:]
+    f.close()
+
+    x_airfoil = np.zeros(len(lines))
+    y_airfoil = np.zeros(len(lines))
+    counter = 0
+    for line in lines:
+        string_table = line.split(" ")
+
+        if counter < len(lines)/2 :
+            x_airfoil[counter] = float(string_table[2])
+            y_airfoil[counter] = float(string_table[4])
+        else :
+            x_airfoil[counter] = float(string_table[2])
+            y_airfoil[counter] = float(string_table[3])
+
+        counter += 1
+        #print(string_table)
+    scatter = go.Scatter(x=x_airfoil,y=y_airfoil,mode="lines",name = "BACJ airfoil",fill='tonexty')
+    fig2.add_trace(scatter)
+
+    fig2.update_layout(
+        xaxis_title="x", yaxis_title="y"
+    )
+    fig2.update_yaxes(scaleanchor="x", scaleratio=1)
+
+
+
+
+
+    return fig,fig2
