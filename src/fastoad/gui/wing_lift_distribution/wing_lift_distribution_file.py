@@ -158,7 +158,7 @@ def wing_lift_distribution_plot(
             y_airfoil[counter] = float(string_table[3])
 
         counter += 1
-        #print(string_table)
+        
     scatter = go.Scatter(x=x_airfoil,y=y_airfoil,mode="lines",name = "BACJ airfoil",fill='tonexty')
     fig2.add_trace(scatter)
 
