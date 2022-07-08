@@ -49,15 +49,4 @@ class Alpha0(om.ExplicitComponent):
     def compute(self, inputs, outputs, discrete_inputs=None, discrete_outputs=None):
 
         xfoil_data_file = pth.join(RESULT_FOLDER_PATH, RESULT_POLAR_FILENAME)
-        f = open(xfoil_data_file, "r")
-        lines = f.readlines()
-        for line in lines:
-            print(line)
-        f.close()
         outputs["data:aerodynamics:wing_lift_distribution:alpha0"] = -np.ones(N_THETA)
-
-
-
-
-
-

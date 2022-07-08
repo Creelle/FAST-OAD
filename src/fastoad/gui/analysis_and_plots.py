@@ -39,6 +39,7 @@ from .payload_range.payload_range_file import payload_range_loop_computation
 from .drag_distribution.drag_distribution_file import drag_distribution_plot
 
 from .wing_lift_distribution.wing_lift_distribution_file import wing_lift_distribution_plot
+from .wing_lift_distribution.wing_lift_distribution_file import airfoil_drawing
 
 # pylint: disable-msg=too-many-locals
 def wing_geometry_plot(

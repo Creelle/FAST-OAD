@@ -19,6 +19,7 @@ import fastoad.api as oad
 
 import numpy as np
 
+
 @oad.RegisterOpenMDAOSystem("fastoad.postprocessing.belgian_legacy")
 class PostProcessing(om.Group):
     def initialize(self):
